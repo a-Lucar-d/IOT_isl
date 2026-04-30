@@ -1,0 +1,1 @@
+void normalize_spaces(char *str);
