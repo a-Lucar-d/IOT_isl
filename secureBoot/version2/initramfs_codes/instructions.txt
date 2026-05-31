@@ -1,0 +1,134 @@
+IoT-ISL SecureBoot Installation Guide
+=====================================
+
+Prerequisites
+-------------
+
+Ensure the following packages are installed:
+
+    sudo apt update
+    sudo apt install build-essential libssl-dev initramfs-tools
+
+Project Structure
+-----------------
+
+The SecureBoot verifier is located in:
+
+    secureBoot/version2/
+
+The initramfs scripts are:
+
+    secureBoot/version2/initramfs_codes/iot_isl_hook
+    secureBoot/version2/initramfs_codes/iot_isl_check
+
+Installation Steps
+------------------
+
+1. Build the daemon
+
+    make
+
+2. Deploy SecureBoot
+
+    make deploy-secureboot
+
+This performs the following actions automatically:
+
+    - Builds the daemon
+    - Builds the SecureBoot verifier
+    - Generates secureBoot.boot
+    - Installs iot_isl_hook
+    - Installs iot_isl_check
+    - Updates initramfs
+
+3. Reboot the system
+
+    sudo reboot
+
+Verification
+------------
+
+After reboot, verify the SecureBoot result:
+
+    cat /boot/firmware/iot_isl_status.txt
+
+For debugging information:
+
+    cat /boot/firmware/iot_isl_debug.txt
+
+Expected Result
+---------------
+
+If all monitored files match their stored hashes:
+
+    SAFE
+
+or
+
+    SYSTEM SAFE
+
+will be reported.
+
+Testing Integrity Detection
+---------------------------
+
+Modify any monitored file:
+
+    echo "tampered" >> test.txt
+
+Then redeploy:
+
+    make deploy-secureboot
+
+Reboot:
+
+    sudo reboot
+
+Check status:
+
+    cat /boot/firmware/iot_isl_status.txt
+
+Expected result:
+
+    INTEGRITY COMPROMISED
+
+Updating SecureBoot
+-------------------
+
+Whenever any of the following are modified:
+
+    verifier.c
+    monitored_files.txt
+    iot_isl_hook
+    iot_isl_check
+    generate_manifest.sh
+
+Run:
+
+    make deploy-secureboot
+
+Then reboot:
+
+    sudo reboot
+
+Clean Build
+-----------
+
+To remove all generated files:
+
+    make clean
+
+Notes
+-----
+
+The SecureBoot verifier operates before the daemon starts through initramfs.
+
+The verifier validates the hashes stored in:
+
+    secureBoot/version2/secureBoot.boot
+
+against the monitored files listed in:
+
+    secureBoot/version2/monitored_files.txt
+
+Any mismatch will be reported as an integrity violation.

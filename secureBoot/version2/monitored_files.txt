@@ -1,2 +1,3 @@
-test.txt
-test2.txt
+/boot/firmware/config.txt
+/boot/firmware/cmdline.txt
+/boot/vmlinuz-6.12.75+rpt-rpi-v7

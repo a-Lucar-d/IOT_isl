@@ -1,0 +1,47 @@
+#!/bin/sh
+
+# save the file as /etc/initramfs-tools/scripts/init-premount/iot_isl_check
+PREREQ=""
+
+prereqs()
+{
+    echo "$PREREQ"
+}
+
+case "$1" in
+prereqs)
+    prereqs
+    exit 0
+    ;;
+esac
+
+BOOT_PARTITION="/dev/mmcblk0p1"
+ROOT_PARTITION="/dev/mmcblk0p2"
+
+BOOT_MOUNT="/mnt/bootpart"
+ROOT_MOUNT="/mnt/rootfs"
+
+mkdir -p $BOOT_MOUNT
+mkdir -p $ROOT_MOUNT
+
+mount -t vfat $BOOT_PARTITION $BOOT_MOUNT
+mount -t ext4 $ROOT_PARTITION $ROOT_MOUNT
+
+LOGFILE="$BOOT_MOUNT/iot_isl_debug.txt"
+
+echo "===== IOT_ISL BOOT LOG =====" > $LOGFILE
+
+/usr/local/bin/verifier >> $LOGFILE 2>&1
+
+if [ $? -eq 0 ]; then
+    echo "SAFE" > $BOOT_MOUNT/iot_isl_status.txt
+    echo "[STATUS] SAFE" >> $LOGFILE
+else
+    echo "NOT SAFE" > $BOOT_MOUNT/iot_isl_status.txt
+    echo "[STATUS] NOT SAFE" >> $LOGFILE
+fi
+
+umount $BOOT_MOUNT
+umount $ROOT_MOUNT
+
+exit 0

@@ -5,7 +5,7 @@
 #include <stdbool.h>
 
 #define BUFFER_SIZE 4096
-#define MANIFEST_FILE "secureBoot.boot"
+#define MANIFEST_FILE "/secureBoot.boot"
 
 char* sha256_file(const char *path)
 {
@@ -30,9 +30,11 @@ char* sha256_file(const char *path)
     }
 
     SHA256_CTX sha256;
+
     SHA256_Init(&sha256);
 
     unsigned char buffer[BUFFER_SIZE];
+
     size_t bytesRead;
 
     while((bytesRead = fread(buffer, 1, BUFFER_SIZE, file)) > 0)
@@ -43,6 +45,7 @@ char* sha256_file(const char *path)
     fclose(file);
 
     unsigned char hash[SHA256_DIGEST_LENGTH];
+
     SHA256_Final(hash, &sha256);
 
     for(int i = 0; i < SHA256_DIGEST_LENGTH; i++)
@@ -62,6 +65,7 @@ bool verify_integrity()
     if(manifest == NULL)
     {
         printf("[-] Failed to open manifest file\n");
+
         return false;
     }
 
@@ -80,30 +84,66 @@ bool verify_integrity()
         if(sscanf(line, "%64s %255s", expected_hash, filename) != 2)
         {
             printf("[-] Invalid manifest entry\n");
+
             fclose(manifest);
+
             return false;
         }
 
-        char *calculated_hash = sha256_file(filename);
+        char fullpath[512];
+
+        /*
+            Path Translation During initramfs Boot
+
+            /boot/firmware/...  -> /mnt/bootpart/...
+            /boot/...           -> /mnt/rootfs/boot/...
+        */
+
+        if(strncmp(filename, "/boot/firmware/", 15) == 0)
+        {
+            snprintf(fullpath,
+                     sizeof(fullpath),
+                     "/mnt/bootpart/%s",
+                     filename + 15);
+        }
+        else if(strncmp(filename, "/boot/", 6) == 0)
+        {
+            snprintf(fullpath,
+                     sizeof(fullpath),
+                     "/mnt/rootfs/boot/%s",
+                     filename + 6);
+        }
+        else
+        {
+            snprintf(fullpath,
+                     sizeof(fullpath),
+                     "%s",
+                     filename);
+        }
+
+        char *calculated_hash = sha256_file(fullpath);
 
         if(calculated_hash == NULL)
         {
-            printf("[-] Failed to hash file: %s\n", filename);
+            printf("[-] Failed to hash file: %s\n", fullpath);
+
             fclose(manifest);
+
             return false;
         }
 
         if(strcmp(expected_hash, calculated_hash) != 0)
         {
-            printf("[!] Integrity compromised: %s\n", filename);
+            printf("[!] Integrity compromised: %s\n", fullpath);
 
             free(calculated_hash);
+
             fclose(manifest);
 
             return false;
         }
 
-        printf("[+] Verified: %s\n", filename);
+        printf("[+] Verified: %s\n", fullpath);
 
         free(calculated_hash);
     }
@@ -118,6 +158,7 @@ int main()
     if(verify_integrity())
     {
         printf("\n[*] SYSTEM SAFE\n");
+
         return 0;
     }
 

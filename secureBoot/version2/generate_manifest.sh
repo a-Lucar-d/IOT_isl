@@ -5,11 +5,17 @@ FILELIST="monitored_files.txt"
 
 echo "[*] Generating manifest..."
 
-if [ ! -f "$FILELIST" ]; then
-    echo "[-] monitored_files.txt not found"
-    exit 1
-fi
+> "$MANIFEST"
 
-sha256sum $(cat $FILELIST) > $MANIFEST
+while read -r file
+do
+    if [ ! -f "$file" ]; then
+        echo "[-] Missing file: $file"
+        continue
+    fi
+
+    sha256sum "$file" >> "$MANIFEST"
+
+done < "$FILELIST"
 
 echo "[+] Manifest generated: $MANIFEST"
